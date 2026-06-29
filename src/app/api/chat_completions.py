@@ -14,7 +14,7 @@ import json
 import time
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ..auth import require_api_key
 from ..config import Settings, get_settings
@@ -41,6 +41,7 @@ def _bad(msg: str) -> HTTPException:
 
 @router.post("/v1/chat/completions")
 async def chat_completions(
+    request: Request,
     body: ChatCompletionRequest,
     _: None = Depends(require_api_key),
     engine: DetectionEngine = Depends(get_engine),
@@ -71,7 +72,8 @@ async def chat_completions(
         conf_threshold=settings.conf_threshold,
         iou_threshold=settings.iou_threshold,
     )
-    del image  # not needed for the chat response
+    orig_h, orig_w = image.shape[:2]
+    del image
 
     # Serialise through Pydantic to coerce numpy scalars and match the native endpoint format.
     detections_out = [
@@ -85,6 +87,13 @@ async def chat_completions(
     ]
     content_str = json.dumps({"detections": detections_out})
     model_id = body.model or settings.model_id
+
+    request.state.detection_log = {
+        "detection_count": len(raw),
+        "image_width": orig_w,
+        "image_height": orig_h,
+        "model_id": model_id,
+    }
 
     return ChatCompletionResponse(
         id=f"chatcmpl-{uuid.uuid4().hex}",

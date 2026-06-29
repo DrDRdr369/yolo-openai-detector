@@ -8,7 +8,7 @@ Request/response/error contracts: docs/api-contract.md sections 3 and 5.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from ..auth import require_api_key
 from ..config import Settings, get_settings
@@ -29,6 +29,7 @@ router = APIRouter()
 
 @router.post("/v1/detections")
 async def detect(
+    request: Request,
     body: DetectRequest,
     _: None = Depends(require_api_key),
     engine: DetectionEngine = Depends(get_engine),
@@ -59,6 +60,13 @@ async def detect(
         )
         for d in raw
     ]
+
+    request.state.detection_log = {
+        "detection_count": len(detections),
+        "image_width": orig_w,
+        "image_height": orig_h,
+        "model_id": settings.model_id,
+    }
 
     return DetectResponse(
         model=settings.model_id,

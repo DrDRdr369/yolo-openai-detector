@@ -6,12 +6,16 @@ The serving path uses onnxruntime only (AGENTS.md §3, stack law).
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import onnxruntime as ort
 
 from .labels import load_labels
 from .postprocess import decode_predictions
 from .preprocess import letterbox
+
+_logger = logging.getLogger(__name__)
 
 
 class ModelLoadError(RuntimeError):
@@ -44,6 +48,17 @@ class DetectionEngine:
             If the model file cannot be opened or is not a valid ONNX graph.
         """
         providers = _PROVIDER_MAP.get(provider.lower(), _PROVIDER_MAP["cpu"])
+
+        if provider.lower() == "openvino":
+            available = ort.get_available_providers()
+            if "OpenVINOExecutionProvider" not in available:
+                _logger.warning(
+                    "ONNX_PROVIDER=openvino requested but OpenVINOExecutionProvider is not "
+                    "installed (available: %s); session will use CPU. "
+                    "Install onnxruntime-openvino to enable OpenVINO acceleration.",
+                    available,
+                )
+
         try:
             self._session = ort.InferenceSession(model_path, providers=providers)
         except Exception as exc:

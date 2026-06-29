@@ -154,4 +154,6 @@ Errors never include the API key or raw image bytes.
 | `IOU_THRESHOLD` | Default NMS IoU threshold | `0.45` |
 | `MAX_IMAGE_BYTES` | Reject larger decoded images | e.g. `10_000_000` |
 | `MAX_IMAGE_PIXELS` | Reject larger resolutions | e.g. `4096*4096` |
-| `ONNX_PROVIDER` | `cpu` or `openvino` | `cpu` |
+| `ONNX_PROVIDER` | `cpu` or `openvino` (falls back to CPU with a warning if OpenVINO is unavailable) | `cpu` |
+| `LOG_LEVEL` | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
+| `MAX_REQUEST_BODY_BYTES` | Reject JSON bodies larger than this (bytes) before parsing | `25000000` |

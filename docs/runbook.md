@@ -52,5 +52,8 @@ The service is stateless, so scale horizontally: run multiple identical replicas
 load balancer. No sticky routing or shared state is required.
 
 ## Logging
-Logs contain request metadata only (size, latency, detection count). They must **never**
-contain raw image bytes or the API key. Verify this after any logging change.
+The `LOG_LEVEL` env var controls verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`; default `INFO`).
+Logs contain request metadata only: method, path, status, latency_ms, detection_count,
+image dimensions, model_id. They must **never** contain the API key, `Authorization` header
+value, or raw image bytes. The log-scrub tests in `tests/test_logging.py` verify this
+invariant on every CI run. Verify manually after any logging change.
