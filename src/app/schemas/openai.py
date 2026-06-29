@@ -1,23 +1,67 @@
 """OpenAI-compatible chat-completion schemas (facade).
 
-Implements: PR-3.
-
-Mirror docs/api-contract.md section 4. Only the subset needed to accept a vision request
-and emit a chat.completion envelope. Unsupported fields (stream, etc.) are rejected at the
-handler, not silently accepted.
+Mirror docs/api-contract.md section 4. Accepts the vision message shape; unknown/extra
+OpenAI fields on request models are silently ignored via ConfigDict(extra="ignore").
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
-class ChatCompletionRequest(BaseModel):
-    """PR-3: model (str | None), messages (list), optional fields.
+class _Tolerant(BaseModel):
+    """Base for request-side models: extra fields from the OpenAI SDK are silently dropped."""
 
-    The image is carried inside messages[].content[].image_url.url as base64/data: URL.
-    """
+    model_config = ConfigDict(extra="ignore")
+
+
+class ImageUrlContent(_Tolerant):
+    url: str
+
+
+class ContentPart(_Tolerant):
+    type: str
+    image_url: ImageUrlContent | None = None
+    text: str | None = None
+
+
+class Message(_Tolerant):
+    role: str
+    content: str | list[ContentPart] = ""
+
+
+class ChatCompletionRequest(_Tolerant):
+    model: str | None = None
+    messages: list[Message]
+    stream: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Response models (we build these ourselves — no need for extra="ignore")
+# ---------------------------------------------------------------------------
+
+
+class Usage(BaseModel):
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+class AssistantMessage(BaseModel):
+    role: str = "assistant"
+    content: str
+
+
+class Choice(BaseModel):
+    index: int
+    finish_reason: str
+    message: AssistantMessage
 
 
 class ChatCompletionResponse(BaseModel):
-    """PR-3: standard chat.completion envelope with zero-filled usage."""
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: list[Choice]
+    usage: Usage

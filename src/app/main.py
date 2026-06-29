@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from .api.chat_completions import router as chat_completions_router
 from .api.detections import router as detections_router
 from .api.models_route import router as models_router
 from .config import get_settings
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
 
     app.include_router(models_router)
     app.include_router(detections_router)
+    app.include_router(chat_completions_router)
     return app
 
 
