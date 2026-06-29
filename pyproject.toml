@@ -52,3 +52,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Depends() is FastAPI's standard DI marker — safe as a default argument.
+extend-immutable-calls = ["Depends", "fastapi.Depends"]
