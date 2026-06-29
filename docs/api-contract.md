@@ -29,7 +29,16 @@ Auth: `Authorization: Bearer <GATEWAY_API_KEY>` on every request. Missing/invali
 
 ## 2. `GET /v1/models`
 
-Returns the loaded model so SDK readiness checks pass.
+**Authenticated readiness probe.** Returns the loaded model when the engine is ready; fails
+closed with `503` when the model is not loaded.
+
+| Condition | HTTP | Body |
+|---|---|---|
+| Model loaded, valid key | `200` | `{object: "list", data: [...]}` |
+| Model not loaded, valid key | `503` | `{"error": {"type": "server_error", ...}}` |
+| Missing/wrong key | `401` | `{"error": {"type": "authentication_error", ...}}` |
+
+Success response:
 
 ```json
 {
@@ -39,6 +48,9 @@ Returns the loaded model so SDK readiness checks pass.
   ]
 }
 ```
+
+**Health probes:** use `GET /healthz` (no key, always 200 when the process is alive) for
+liveness; use `GET /v1/models` (key required) for readiness.
 
 ---
 

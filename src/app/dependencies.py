@@ -25,7 +25,9 @@ def get_engine(request: Request) -> DetectionEngine:
     ``main.py``.  Override this dependency in tests via
     ``app.dependency_overrides[get_engine] = lambda: fake``.
     """
-    engine = request.app.state.engine
+    # Use getattr so tests that skip the lifespan (ASGI transport doesn't run it)
+    # still return 503 rather than AttributeError when engine is never set.
+    engine = getattr(request.app.state, "engine", None)
     if engine is None:
         raise HTTPException(status_code=503, detail=_503_DETAIL)
     return engine

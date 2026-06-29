@@ -87,7 +87,8 @@ On a GPU-less machine, throughput and cold-start memory dominate. ONNX Runtime w
 - Single container image: app + ONNX Runtime + the exported detection model (baked in or mounted as a volume).
 - `docker-compose.yml`: one `gateway` service, exposing `:8000`, env-configured key, model path, thresholds, and input limits.
 - **No database, no Redis, no background worker, no scheduler.** Fully stateless.
-- Health endpoint (`/healthz`) for liveness; `/v1/models` doubles as readiness (model loaded).
+- **Liveness probe (unauthenticated):** `GET /healthz` — always 200 while the process is alive; no key required.
+- **Readiness probe (authenticated):** `GET /v1/models` with `Authorization: Bearer <key>` — returns 200 + model list when the detection model is loaded; returns 503 when the model failed to load; returns 401 for a missing/wrong key. Wire your load-balancer or orchestrator accordingly.
 - Because there is no shared state, the service **scales horizontally trivially** — run as many identical workers/replicas behind a load balancer as needed.
 
 ---

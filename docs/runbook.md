@@ -38,11 +38,22 @@ as a volume or fetched at build time.
    attributable to the leaked key.
 3. If network-level logs exist (reverse proxy), review for anomalous source IPs.
 
+## Health probes
+
+| Probe | Endpoint | Auth | Returns |
+|---|---|---|---|
+| Liveness | `GET /healthz` | None | `200 {"status":"ok"}` while the process is alive |
+| Readiness | `GET /v1/models` | Bearer key | `200` + model list when model loaded; `503` when not loaded; `401` on bad key |
+
+Configure your orchestrator / load-balancer:
+- Liveness: `GET /healthz` — restart the container on repeated failure.
+- Readiness: `GET /v1/models` with `Authorization: Bearer <key>` — take the replica out of rotation until it returns 200.
+
 ## Troubleshooting
 | Symptom | Likely cause | Action |
 |---|---|---|
 | App exits on startup | `GATEWAY_API_KEY` unset | Set the env var; the app fails closed by design. |
-| `503` on requests | Model not loaded | Check `MODEL_PATH` and that the ONNX file exists/readable. |
+| `503` on all detection requests and `/v1/models` | Model not loaded | Check `MODEL_PATH` and that the ONNX file exists and is readable. |
 | `401` on every call | Wrong/missing bearer token | Verify the `Authorization: Bearer <key>` header. |
 | `400` "base64 image required" | Client sent a remote URL | Attach the image as base64 / `data:` URL. |
 | High latency | Large model or image on CPU | Use a smaller model (`yolo11n`), cap `MAX_IMAGE_PIXELS`, scale replicas. |
