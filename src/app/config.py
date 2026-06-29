@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
+    # Logging
+    log_level: str = "INFO"
+
+    # Max JSON request body (defense-in-depth before image decode limits)
+    max_request_body_bytes: int = 25_000_000
+
     @field_validator("gateway_api_key")
     @classmethod
     def _key_not_empty(cls, v: str) -> str:

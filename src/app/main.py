@@ -17,6 +17,7 @@ from .api.models_route import router as models_router
 from .config import get_settings
 from .errors import register_exception_handlers
 from .inference.engine import DetectionEngine, ModelLoadError
+from .logging_config import RequestLoggingMiddleware, configure_logging
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     settings = get_settings()  # fails closed at startup if GATEWAY_API_KEY is unset
+    configure_logging(settings.log_level)
 
     # Load detection model; if absent/corrupt, keep serving auth + health (fail-soft for model).
     try:
@@ -45,6 +47,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="YOLO Vision Gateway", lifespan=_lifespan)
 
     register_exception_handlers(app)
+    app.add_middleware(RequestLoggingMiddleware)
 
     @app.get("/healthz", tags=["health"])
     async def healthz() -> dict:

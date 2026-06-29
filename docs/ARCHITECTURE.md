@@ -103,9 +103,26 @@ On a GPU-less machine, throughput and cold-start memory dominate. ONNX Runtime w
 
 ---
 
-## 7. Known limitations (recorded honestly, to be carried into release language)
+## 7. Known limitations and reference latency
 
-1. **CPU latency.** Detection latency per image depends on model size and image resolution; document expected per-image latency per model size on reference hardware.
+1. **CPU latency.** Detection latency per image depends on model size and image resolution.
 2. **Chat-completions facade is a thin adapter,** not a general LLM. It only returns detection JSON for one attached image; unsupported chat features fail closed with a clear error.
 3. **Detection only.** No tracking, no segmentation, no classification-beyond-detection. By design.
 4. **No quotas / no per-user accounting.** Single fixed key by design.
+
+### Reference hardware latency table
+
+Measured end-to-end per-image latency (HTTP round-trip, ASGI transport, CPU only).
+Values marked **TODO** must be measured on the operator's reference hardware before
+publishing performance claims. Do not substitute fabricated numbers.
+
+| Model | Input size | Provider | CPU / hardware | p50 latency | p95 latency |
+|---|---|---|---|---|---|
+| yolo11n | 640 × 640 | CPU | TODO: measure | TODO | TODO |
+| yolo11s | 640 × 640 | CPU | TODO: measure | TODO | TODO |
+| yolo11n | 640 × 640 | OpenVINO | TODO: measure (Intel only) | TODO | TODO |
+
+**How to measure:** export the model (`make export-model`), run the server, then use the
+test suite's ASGI client in a tight loop (`timeit`) or a dedicated benchmark script against
+a fixed test image. Record CPU model, core count, and RAM. Add the results to this table
+before any public performance claim.

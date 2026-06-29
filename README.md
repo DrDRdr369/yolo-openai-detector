@@ -36,12 +36,14 @@ documents are not decoration — they are project law:
 
 ## Project status
 
-**Scaffold / pre-implementation.** This repo contains the full governance, documentation,
-directory structure, and build configuration. The source modules under `src/app/` are
-**stubs** that raise `NotImplementedError`, each annotated with the work-order (PR) that
-implements it. Implementation proceeds slice-by-slice per `docs/work-orders.md`.
+**RC-beta (implemented scope).** PRs 0–4 implement the full v1 feature set: bearer auth,
+CPU ONNX inference, `POST /v1/detections`, `POST /v1/chat/completions` (stock OpenAI SDK
+compatible), structured no-leak logging, and input hardening. The service passes its own
+test suite and is suitable for internal evaluation.
 
-Do not mistake "scaffolded" for "working." See `docs/limitations.md`.
+This is **not** production-certified, security-audited, or penetration-tested.
+Do not expose to an untrusted network without an independent security review.
+See [`docs/limitations.md`](docs/limitations.md) for the full honest limitation list.
 
 ---
 
@@ -71,10 +73,7 @@ Full detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
-## Quickstart (after implementation)
-
-> These commands describe the intended developer experience. They will work once the
-> work-order slices are implemented.
+## Quickstart
 
 ```bash
 # 1. Configure
