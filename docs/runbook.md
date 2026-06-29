@@ -38,11 +38,22 @@ as a volume or fetched at build time.
    attributable to the leaked key.
 3. If network-level logs exist (reverse proxy), review for anomalous source IPs.
 
+## Health probes
+
+| Probe | Endpoint | Auth | Returns |
+|---|---|---|---|
+| Liveness | `GET /healthz` | None | `200 {"status":"ok"}` while the process is alive |
+| Readiness | `GET /v1/models` | Bearer key | `200` + model list when model loaded; `503` when not loaded; `401` on bad key |
+
+Configure your orchestrator / load-balancer:
+- Liveness: `GET /healthz` — restart the container on repeated failure.
+- Readiness: `GET /v1/models` with `Authorization: Bearer <key>` — take the replica out of rotation until it returns 200.
+
 ## Troubleshooting
 | Symptom | Likely cause | Action |
 |---|---|---|
 | App exits on startup | `GATEWAY_API_KEY` unset | Set the env var; the app fails closed by design. |
-| `503` on requests | Model not loaded | Check `MODEL_PATH` and that the ONNX file exists/readable. |
+| `503` on all detection requests and `/v1/models` | Model not loaded | Check `MODEL_PATH` and that the ONNX file exists and is readable. |
 | `401` on every call | Wrong/missing bearer token | Verify the `Authorization: Bearer <key>` header. |
 | `400` "base64 image required" | Client sent a remote URL | Attach the image as base64 / `data:` URL. |
 | High latency | Large model or image on CPU | Use a smaller model (`yolo11n`), cap `MAX_IMAGE_PIXELS`, scale replicas. |
@@ -52,5 +63,27 @@ The service is stateless, so scale horizontally: run multiple identical replicas
 load balancer. No sticky routing or shared state is required.
 
 ## Logging
-Logs contain request metadata only (size, latency, detection count). They must **never**
-contain raw image bytes or the API key. Verify this after any logging change.
+The `LOG_LEVEL` env var controls verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`; default `INFO`).
+Logs contain request metadata only: method, path, status, latency_ms, detection_count,
+image dimensions, model_id. They must **never** contain the API key, `Authorization` header
+value, or raw image bytes. The log-scrub tests in `tests/test_logging.py` verify this
+invariant on every CI run. Verify manually after any logging change.
+
+## CI
+GitHub Actions runs two jobs on every push and pull request:
+
+- **`lint-and-test`** — ruff lint + full hermetic test suite (no model required, always fast).
+- **`integration`** — exports `yolo11n.onnx` (cached by `actions/cache` keyed on export script
+  hash) then runs `pytest -m integration`. These are the two model-gated tests that previously
+  only ran locally when a model was present.
+
+To reproduce the integration job locally:
+
+```bash
+make test-integration          # exports model if absent, then runs pytest -m integration
+# or, with a different model variant:
+make test-integration MODEL_ID=yolo11s
+```
+
+The model cache key is `model-yolo11n-v1-<hash>`. Bump the `v1` prefix in
+`.github/workflows/ci.yml` to force a fresh export (e.g., after an Ultralytics version bump).

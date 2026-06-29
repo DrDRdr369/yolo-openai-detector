@@ -29,7 +29,16 @@ Auth: `Authorization: Bearer <GATEWAY_API_KEY>` on every request. Missing/invali
 
 ## 2. `GET /v1/models`
 
-Returns the loaded model so SDK readiness checks pass.
+**Authenticated readiness probe.** Returns the loaded model when the engine is ready; fails
+closed with `503` when the model is not loaded.
+
+| Condition | HTTP | Body |
+|---|---|---|
+| Model loaded, valid key | `200` | `{object: "list", data: [...]}` |
+| Model not loaded, valid key | `503` | `{"error": {"type": "server_error", ...}}` |
+| Missing/wrong key | `401` | `{"error": {"type": "authentication_error", ...}}` |
+
+Success response:
 
 ```json
 {
@@ -39,6 +48,9 @@ Returns the loaded model so SDK readiness checks pass.
   ]
 }
 ```
+
+**Health probes:** use `GET /healthz` (no key, always 200 when the process is alive) for
+liveness; use `GET /v1/models` (key required) for readiness.
 
 ---
 
@@ -108,7 +120,7 @@ Lets the **stock OpenAI SDK** work unchanged. The image rides in the vision mess
 {
   "id": "chatcmpl-...",
   "object": "chat.completion",
-  "created": 0,
+  "created": 1751234567,
   "model": "yolo11n",
   "choices": [
     {
@@ -123,6 +135,7 @@ Lets the **stock OpenAI SDK** work unchanged. The image rides in the vision mess
   "usage": { "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0 }
 }
 ```
+- `created` is a real Unix timestamp (seconds since epoch), not a static placeholder.
 - `message.content` is a JSON **string** containing the same detection payload as the native endpoint (so clients can `json.loads` it).
 - `usage` is zero-filled (no token billing concept here) but present for SDK compatibility.
 
@@ -153,4 +166,6 @@ Errors never include the API key or raw image bytes.
 | `IOU_THRESHOLD` | Default NMS IoU threshold | `0.45` |
 | `MAX_IMAGE_BYTES` | Reject larger decoded images | e.g. `10_000_000` |
 | `MAX_IMAGE_PIXELS` | Reject larger resolutions | e.g. `4096*4096` |
-| `ONNX_PROVIDER` | `cpu` or `openvino` | `cpu` |
+| `ONNX_PROVIDER` | `cpu` or `openvino` (falls back to CPU with a warning if OpenVINO is unavailable) | `cpu` |
+| `LOG_LEVEL` | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
+| `MAX_REQUEST_BODY_BYTES` | Reject JSON bodies larger than this (bytes) before parsing | `25000000` |

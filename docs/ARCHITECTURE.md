@@ -87,7 +87,8 @@ On a GPU-less machine, throughput and cold-start memory dominate. ONNX Runtime w
 - Single container image: app + ONNX Runtime + the exported detection model (baked in or mounted as a volume).
 - `docker-compose.yml`: one `gateway` service, exposing `:8000`, env-configured key, model path, thresholds, and input limits.
 - **No database, no Redis, no background worker, no scheduler.** Fully stateless.
-- Health endpoint (`/healthz`) for liveness; `/v1/models` doubles as readiness (model loaded).
+- **Liveness probe (unauthenticated):** `GET /healthz` — always 200 while the process is alive; no key required.
+- **Readiness probe (authenticated):** `GET /v1/models` with `Authorization: Bearer <key>` — returns 200 + model list when the detection model is loaded; returns 503 when the model failed to load; returns 401 for a missing/wrong key. Wire your load-balancer or orchestrator accordingly.
 - Because there is no shared state, the service **scales horizontally trivially** — run as many identical workers/replicas behind a load balancer as needed.
 
 ---
@@ -103,9 +104,26 @@ On a GPU-less machine, throughput and cold-start memory dominate. ONNX Runtime w
 
 ---
 
-## 7. Known limitations (recorded honestly, to be carried into release language)
+## 7. Known limitations and reference latency
 
-1. **CPU latency.** Detection latency per image depends on model size and image resolution; document expected per-image latency per model size on reference hardware.
+1. **CPU latency.** Detection latency per image depends on model size and image resolution.
 2. **Chat-completions facade is a thin adapter,** not a general LLM. It only returns detection JSON for one attached image; unsupported chat features fail closed with a clear error.
 3. **Detection only.** No tracking, no segmentation, no classification-beyond-detection. By design.
 4. **No quotas / no per-user accounting.** Single fixed key by design.
+
+### Reference hardware latency table
+
+Measured end-to-end per-image latency (HTTP round-trip, ASGI transport, CPU only).
+Values marked **TODO** must be measured on the operator's reference hardware before
+publishing performance claims. Do not substitute fabricated numbers.
+
+| Model | Input size | Provider | CPU / hardware | p50 latency | p95 latency |
+|---|---|---|---|---|---|
+| yolo11n | 640 × 640 | CPU | TODO: measure | TODO | TODO |
+| yolo11s | 640 × 640 | CPU | TODO: measure | TODO | TODO |
+| yolo11n | 640 × 640 | OpenVINO | TODO: measure (Intel only) | TODO | TODO |
+
+**How to measure:** export the model (`make export-model`), run the server, then use the
+test suite's ASGI client in a tight loop (`timeit`) or a dedicated benchmark script against
+a fixed test image. Record CPU model, core count, and RAM. Add the results to this table
+before any public performance claim.
