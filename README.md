@@ -36,10 +36,10 @@ documents are not decoration — they are project law:
 
 ## Project status
 
-**RC-beta (implemented scope).** PRs 0–4 implement the full v1 feature set: bearer auth,
+**RC-beta (implemented scope).** PRs 0–5 implement the full v1 feature set: bearer auth,
 CPU ONNX inference, `POST /v1/detections`, `POST /v1/chat/completions` (stock OpenAI SDK
-compatible), structured no-leak logging, and input hardening. The service passes its own
-test suite and is suitable for internal evaluation.
+compatible), structured no-leak logging, input hardening, and CI with real-model integration
+tests. The service passes its own test suite and is suitable for internal evaluation.
 
 This is **not** production-certified, security-audited, or penetration-tested.
 Do not expose to an untrusted network without an independent security review.
@@ -120,12 +120,17 @@ curl -s http://localhost:8000/v1/detections \
 ## Local development
 
 ```bash
-make install      # install runtime + dev dependencies
-make export-model # export a YOLO detection model to ONNX into models/
-make run          # run the dev server (uvicorn, reload)
-make test         # run pytest
-make lint         # run ruff
+make install          # install runtime + dev dependencies
+make export-model     # export a YOLO detection model to ONNX into models/
+make run              # run the dev server (uvicorn, reload)
+make test             # run pytest (hermetic suite — no model required)
+make test-integration # export model if absent, then run real-model integration tests
+make lint             # run ruff
 ```
+
+CI runs two jobs on every push and PR: fast hermetic tests (no model), then real-model
+integration tests with the ONNX model cached across runs. See [`docs/runbook.md`](docs/runbook.md)
+for details.
 
 See the [`Makefile`](Makefile) for the underlying commands.
 

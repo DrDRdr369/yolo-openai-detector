@@ -289,10 +289,11 @@ async def test_engine_unavailable_returns_503(monkeypatch, api_key):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(
     not os.path.isfile(_MODEL_PATH),
     reason=f"Integration test skipped: model not found at {_MODEL_PATH!r}. "
-    "Run `make export-model` first.",
+    "Run `make test-integration` to export the model and run this test.",
 )
 async def test_golden_image_detection(api_key, monkeypatch, valid_image_b64):
     """End-to-end detection with the real ONNX model — format and schema correctness."""
