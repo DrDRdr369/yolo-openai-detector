@@ -10,6 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from PIL import Image as PILImage
 
 from .api.chat_completions import router as chat_completions_router
 from .api.detections import router as detections_router
@@ -26,6 +27,9 @@ logger = logging.getLogger(__name__)
 async def _lifespan(app: FastAPI):
     settings = get_settings()  # fails closed at startup if GATEWAY_API_KEY is unset
     configure_logging(settings.log_level)
+
+    # Set Pillow's decompression-bomb guard once (not per-request) using the configured limit.
+    PILImage.MAX_IMAGE_PIXELS = settings.max_image_pixels
 
     # Load detection model; if absent/corrupt, keep serving auth + health (fail-soft for model).
     try:
