@@ -1,0 +1,9 @@
+# Runtime (serving) dependencies only. Mirrors [project.dependencies] in pyproject.toml.
+# NO GPU, NO training framework on the serving path.
+fastapi==0.138.1
+uvicorn[standard]==0.49.0
+pydantic==2.13.4
+pydantic-settings==2.14.2
+onnxruntime==1.27.0
+numpy==2.5.0
+pillow==12.2.0
