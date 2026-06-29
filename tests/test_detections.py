@@ -295,30 +295,60 @@ async def test_engine_unavailable_returns_503(monkeypatch, api_key):
     reason=f"Integration test skipped: model not found at {_MODEL_PATH!r}. "
     "Run `make test-integration` to export the model and run this test.",
 )
-async def test_golden_image_detection(api_key, monkeypatch, valid_image_b64):
-    """End-to-end detection with the real ONNX model — format and schema correctness."""
+async def test_golden_image_detection(api_key, monkeypatch):
+    """End-to-end golden detection via HTTP: real model + real image → ≥1 COCO object.
+
+    ASGITransport does not run the ASGI lifespan, so the engine is loaded explicitly
+    via app.state before requests are made (consistent with how httpx test clients work
+    in this project — see conftest.py detection_client for the fake-engine variant).
+    """
+    ultralytics_mod = pytest.importorskip(
+        "ultralytics",
+        reason="ultralytics must be installed to resolve the golden fixture (bus.jpg)",
+    )
+    from pathlib import Path
+
+    bus_jpg = Path(ultralytics_mod.__file__).parent / "assets" / "bus.jpg"
+    if not bus_jpg.is_file():
+        pytest.skip(f"Ultralytics golden fixture not found at {bus_jpg}")
+
     monkeypatch.setenv("GATEWAY_API_KEY", api_key)
     get_settings.cache_clear()
 
+    from app.inference.engine import DetectionEngine
     from app.main import create_app
 
     app_instance = create_app()
+    # ASGITransport does not trigger the ASGI lifespan; load the real engine manually.
+    app_instance.state.engine = DetectionEngine(_MODEL_PATH, provider="cpu")
+
+    image_b64 = base64.b64encode(bus_jpg.read_bytes()).decode()
+
     async with AsyncClient(
         transport=ASGITransport(app=app_instance), base_url="http://test"
     ) as c:
         response = await c.post(
-            "/v1/detections", json={"image": valid_image_b64}, headers=_auth(api_key)
+            "/v1/detections", json={"image": image_b64}, headers=_auth(api_key)
         )
 
     get_settings.cache_clear()
     assert response.status_code == 200
     body = response.json()
     assert "model" in body
-    assert body["image"]["width"] == 64
-    assert body["image"]["height"] == 64
     assert isinstance(body["detections"], list)
+
+    # Schema: every detection must be a well-formed dict
     for det in body["detections"]:
         assert all(k in det for k in ("class_id", "label", "confidence", "box"))
         assert 0.0 <= det["confidence"] <= 1.0
         assert det["box"]["x1"] <= det["box"]["x2"]
         assert det["box"]["y1"] <= det["box"]["y2"]
+
+    # Correctness: the endpoint must return ≥1 known COCO object above default threshold
+    assert len(body["detections"]) > 0, (
+        "Expected ≥1 detection on bus.jpg via /v1/detections; model may be misconfigured"
+    )
+    detected_labels = {d["label"] for d in body["detections"]}
+    assert "person" in detected_labels or "bus" in detected_labels, (
+        f"Expected 'person' or 'bus' in detections on bus.jpg; got {detected_labels}"
+    )

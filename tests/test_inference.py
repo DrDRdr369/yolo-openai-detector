@@ -204,27 +204,35 @@ _MODEL_PATH = os.environ.get("MODEL_PATH", "models/yolo11n.onnx")
     reason=f"Golden test skipped: model not found at {_MODEL_PATH!r}. "
     "Run `make export-model` (or `make test-integration`) to export it first.",
 )
-def test_golden_image_engine_format():
-    """DetectionEngine.infer returns correctly shaped dicts (format golden test).
+def test_golden_image_engine_detects_coco_object():
+    """DetectionEngine.infer returns ≥1 correctly-shaped detection on a real image.
 
-    Uses the committed blue fixture image which has no detectable COCO objects,
-    so we assert format correctness and 0 detections deterministically.
+    Uses the ultralytics-bundled bus.jpg (persons + bus in frame), which produces
+    confident detections with any yolo11n model at conf=0.5. Verifies both result
+    format (schema) and meaningful inference (not just a shape-check on empty output).
     """
+    ultralytics_mod = pytest.importorskip(
+        "ultralytics",
+        reason="ultralytics must be installed to resolve the golden fixture (bus.jpg)",
+    )
+    from pathlib import Path
+
+    from PIL import Image as PILImage
+
     from app.inference.engine import DetectionEngine
 
+    bus_jpg = Path(ultralytics_mod.__file__).parent / "assets" / "bus.jpg"
+    if not bus_jpg.is_file():
+        pytest.skip(f"Ultralytics golden fixture not found at {bus_jpg}")
+
     engine = DetectionEngine(_MODEL_PATH, provider="cpu")
+    image = np.array(PILImage.open(bus_jpg).convert("RGB"))
+    detections = engine.infer(image, conf_threshold=0.5, iou_threshold=0.45)
 
-    import numpy as np
-
-    image = np.full((640, 640, 3), 114, dtype=np.uint8)  # grey canvas
-    detections = engine.infer(image, conf_threshold=0.25, iou_threshold=0.45)
-
+    # Schema: every detection must be a well-formed dict
     assert isinstance(detections, list)
     for det in detections:
-        assert "class_id" in det
-        assert "label" in det
-        assert "confidence" in det
-        assert "box" in det
+        assert all(k in det for k in ("class_id", "label", "confidence", "box"))
         box = det["box"]
         assert all(k in box for k in ("x1", "y1", "x2", "y2"))
         assert isinstance(det["class_id"], int)
@@ -232,3 +240,14 @@ def test_golden_image_engine_format():
         assert 0.0 <= det["confidence"] <= 1.0
         assert box["x1"] <= box["x2"]
         assert box["y1"] <= box["y2"]
+
+    # Correctness: the model must detect ≥1 known COCO object above threshold
+    assert len(detections) > 0, (
+        "Expected ≥1 detection on bus.jpg at conf_threshold=0.5; "
+        "model may be corrupt or misconfigured"
+    )
+    detected_labels = {d["label"] for d in detections}
+    assert "person" in detected_labels or "bus" in detected_labels, (
+        f"Expected 'person' or 'bus' in detections on bus.jpg; got {detected_labels}"
+    )
+    assert all(d["confidence"] >= 0.5 for d in detections)
