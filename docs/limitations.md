@@ -6,11 +6,11 @@ Release honesty is a project rule (see `AGENTS.md`). This file states what the s
 ## Release status
 
 **RC-beta (implemented scope).**
-PRs 0–4 implement the full v1 scope: bearer auth, CPU ONNX inference, native
+PRs 0–5 implement the full v1 scope: bearer auth, CPU ONNX inference, native
 `POST /v1/detections`, OpenAI `POST /v1/chat/completions` facade, structured
-no-leak logging, and input hardening. The service is **not** production-certified,
-security-audited, or penetration-tested. Do not deploy to an internet-exposed
-endpoint without an independent security review.
+no-leak logging, input hardening, and CI with real-model integration tests.
+The service is **not** production-certified, security-audited, or penetration-tested.
+Do not deploy to an internet-exposed endpoint without an independent security review.
 
 ## Functional limitations (by design)
 
