@@ -53,6 +53,15 @@ Order matters: each builds on the verified state of the previous. **Current veri
 
 ---
 
+## PR-5 — CI: execute the real-model tests
+**Goal:** Make the 2 model-gated integration tests actually run in CI rather than being skipped every time.
+**Build:** Two-job GitHub Actions workflow: `lint-and-test` (fast, hermetic, no model) and `integration` (exports `yolo11n.onnx` with `actions/cache` keyed on export script + `pyproject.toml` hashes, then runs `pytest -m integration`). Add `@pytest.mark.integration` to both model-gated tests; register the marker in `pyproject.toml`. Add `make test-integration` for local reproduction.
+**Acceptance:** On push/PR, hermetic suite passes first; integration job runs the two previously-skipped tests against a real ONNX model.
+**Tests:** No new tests; existing `test_golden_image_engine_format` and `test_golden_image_detection` are unmarked from skip-only and promoted to `@pytest.mark.integration`.
+**Non-goals:** No product behavior changes; no new runtime dependencies; no GPU path.
+
+---
+
 ## Explicit non-goals for v1 (guardrails — do not build)
 
 - No tracking, object IDs, sessions, or `session_id`.

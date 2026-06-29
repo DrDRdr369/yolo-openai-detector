@@ -57,3 +57,22 @@ Logs contain request metadata only: method, path, status, latency_ms, detection_
 image dimensions, model_id. They must **never** contain the API key, `Authorization` header
 value, or raw image bytes. The log-scrub tests in `tests/test_logging.py` verify this
 invariant on every CI run. Verify manually after any logging change.
+
+## CI
+GitHub Actions runs two jobs on every push and pull request:
+
+- **`lint-and-test`** — ruff lint + full hermetic test suite (no model required, always fast).
+- **`integration`** — exports `yolo11n.onnx` (cached by `actions/cache` keyed on export script
+  hash) then runs `pytest -m integration`. These are the two model-gated tests that previously
+  only ran locally when a model was present.
+
+To reproduce the integration job locally:
+
+```bash
+make test-integration          # exports model if absent, then runs pytest -m integration
+# or, with a different model variant:
+make test-integration MODEL_ID=yolo11s
+```
+
+The model cache key is `model-yolo11n-v1-<hash>`. Bump the `v1` prefix in
+`.github/workflows/ci.yml` to force a fresh export (e.g., after an Ultralytics version bump).

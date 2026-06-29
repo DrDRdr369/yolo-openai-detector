@@ -1,4 +1,4 @@
-.PHONY: install run test lint export-model docker-build docker-up
+.PHONY: install run test lint export-model docker-build docker-up test-integration
 
 install:
 	pip install -e ".[dev]"
@@ -23,3 +23,7 @@ docker-up:
 	docker compose up -d
 
 MODEL_ID ?= yolo11n
+
+test-integration:
+	$(MAKE) export-model MODEL_ID=$(MODEL_ID)
+	MODEL_PATH=models/$(MODEL_ID).onnx pytest -m integration -v

@@ -198,10 +198,11 @@ def test_decode_predictions_conf_threshold_filters():
 _MODEL_PATH = os.environ.get("MODEL_PATH", "models/yolo11n.onnx")
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(
     not os.path.isfile(_MODEL_PATH),
     reason=f"Golden test skipped: model not found at {_MODEL_PATH!r}. "
-    "Run `make export-model` to export it first.",
+    "Run `make export-model` (or `make test-integration`) to export it first.",
 )
 def test_golden_image_engine_format():
     """DetectionEngine.infer returns correctly shaped dicts (format golden test).
