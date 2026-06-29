@@ -195,6 +195,45 @@ async def test_oversized_body_returns_400(
     assert "too large" in resp.json()["error"]["message"].lower()
 
 
+async def test_chunked_oversized_image_still_rejected(
+    detection_client, api_key, monkeypatch
+):
+    """Chunked transfer without Content-Length bypasses the middleware body guard,
+    but the image-level max_bytes limit still fires → 400.
+
+    This confirms that the documented Content-Length bypass is bounded: an
+    attacker cannot sneak an image past the image-size limits by omitting the
+    header.
+    """
+    import json as _json
+
+    monkeypatch.setenv("MAX_IMAGE_BYTES", "10")
+    get_settings.cache_clear()
+
+    # Build an image that decodes to > 10 raw bytes.
+    import base64
+
+    oversized_b64 = base64.b64encode(b"x" * 100).decode()
+    payload = _json.dumps({"image": oversized_b64}).encode()
+
+    # Streaming generator → httpx omits Content-Length (chunked transfer).
+    async def _body():
+        yield payload
+
+    resp = await detection_client.post(
+        "/v1/detections",
+        content=_body(),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+    get_settings.cache_clear()
+
+    assert resp.status_code == 400
+    assert resp.json()["error"]["type"] == "invalid_request_error"
+
+
 # ---------------------------------------------------------------------------
 # OpenVINO fallback
 # ---------------------------------------------------------------------------
