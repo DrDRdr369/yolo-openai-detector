@@ -37,19 +37,19 @@ async def test_valid_key_allows_models(client, api_key):
 
 
 async def test_missing_auth_header_returns_401(client):
-    """/v1/models with no Authorization header returns 401 with authentication_error body."""
+    """/v1/models with no Authorization header returns 401 with OpenAI error body."""
     response = await client.get("/v1/models")
     assert response.status_code == 401
     body = response.json()
-    assert body["detail"]["error"]["type"] == "authentication_error"
+    assert body["error"]["type"] == "authentication_error"
 
 
 async def test_wrong_key_returns_401(client):
-    """/v1/models with an incorrect bearer token returns 401."""
+    """/v1/models with an incorrect bearer token returns 401 with OpenAI error body."""
     response = await client.get("/v1/models", headers={"Authorization": "Bearer wrong-key"})
     assert response.status_code == 401
     body = response.json()
-    assert body["detail"]["error"]["type"] == "authentication_error"
+    assert body["error"]["type"] == "authentication_error"
 
 
 async def test_malformed_auth_header_returns_401(client):

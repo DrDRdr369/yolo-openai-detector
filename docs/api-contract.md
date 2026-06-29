@@ -108,7 +108,7 @@ Lets the **stock OpenAI SDK** work unchanged. The image rides in the vision mess
 {
   "id": "chatcmpl-...",
   "object": "chat.completion",
-  "created": 0,
+  "created": 1751234567,
   "model": "yolo11n",
   "choices": [
     {
@@ -123,6 +123,7 @@ Lets the **stock OpenAI SDK** work unchanged. The image rides in the vision mess
   "usage": { "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0 }
 }
 ```
+- `created` is a real Unix timestamp (seconds since epoch), not a static placeholder.
 - `message.content` is a JSON **string** containing the same detection payload as the native endpoint (so clients can `json.loads` it).
 - `usage` is zero-filled (no token billing concept here) but present for SDK compatibility.
 
