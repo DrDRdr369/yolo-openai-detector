@@ -15,10 +15,6 @@ import io
 import numpy as np
 from PIL import Image as PILImage
 
-# Disable PIL's built-in decompression-bomb guard; we enforce our own configurable
-# limit (max_pixels) before the full raster decode happens.
-PILImage.MAX_IMAGE_PIXELS = None
-
 
 class ImageDecodeError(ValueError):
     """Raised for all image input validation failures. Callers map this to HTTP 400."""
@@ -60,6 +56,15 @@ def decode_base64_image(
             f"Image size {len(raw_bytes)} bytes exceeds the {max_bytes}-byte limit."
         )
 
+    # Belt-and-suspenders: set Pillow's own decompression-bomb guard to our
+    # configured limit so it fires even during format-specific header scanning
+    # (e.g. animated GIF frame tables, TIFF IFD chains) that occurs inside
+    # PILImage.open() before we can read .size. Our explicit check below is the
+    # primary enforcement; this is a second layer for edge-case formats.
+    # Note: Pillow raises DecompressionBombWarning (not an error by default);
+    # the explicit check below always fires regardless.
+    PILImage.MAX_IMAGE_PIXELS = max_pixels
+
     # Open image header only (lazy — no full raster decode yet)
     try:
         pil_img = PILImage.open(io.BytesIO(raw_bytes))
@@ -67,7 +72,7 @@ def decode_base64_image(
     except Exception as exc:
         raise ImageDecodeError(f"Cannot open image: {exc}") from exc
 
-    # Enforce pixel limit before full decode to cap memory / CPU
+    # Primary pixel-limit enforcement (always fires; belt above is secondary)
     if w * h > max_pixels:
         raise ImageDecodeError(
             f"Image resolution {w}x{h} ({w * h} pixels) exceeds the {max_pixels}-pixel limit."
