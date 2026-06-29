@@ -1,0 +1,17 @@
+services:
+  gateway:
+    build: .
+    image: yolo-vision-gateway:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    # Mount models if not baked into the image:
+    # volumes:
+    #   - ./models:/app/models:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://localhost:8000/healthz'); sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
