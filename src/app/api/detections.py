@@ -8,14 +8,11 @@ Request/response/error contracts: docs/api-contract.md sections 3 and 5.
 
 from __future__ import annotations
 
-import time
-
 from fastapi import APIRouter, Depends
 
 from ..auth import require_api_key
 from ..config import Settings, get_settings
 from ..dependencies import get_engine
-from ..imaging.decode import decode_base64_image
 from ..inference.engine import DetectionEngine
 from ..schemas.detections import (
     Box,
@@ -25,6 +22,7 @@ from ..schemas.detections import (
     ImageSize,
     TimingMs,
 )
+from ..service import run_detection
 
 router = APIRouter()
 
@@ -40,17 +38,17 @@ async def detect(
     conf = body.conf_threshold if body.conf_threshold is not None else settings.conf_threshold
     iou = body.iou_threshold if body.iou_threshold is not None else settings.iou_threshold
 
-    # Decode and validate image (ImageDecodeError → 400 via error handler)
-    t0 = time.perf_counter()
-    image = decode_base64_image(body.image, settings.max_image_bytes, settings.max_image_pixels)
-    decode_ms = (time.perf_counter() - t0) * 1000.0
+    image, raw, decode_ms, inference_ms = run_detection(
+        engine=engine,
+        image_b64=body.image,
+        max_bytes=settings.max_image_bytes,
+        max_pixels=settings.max_image_pixels,
+        conf_threshold=conf,
+        iou_threshold=iou,
+        classes=body.classes,
+    )
 
     orig_h, orig_w = image.shape[:2]
-
-    # Inference
-    t1 = time.perf_counter()
-    raw = engine.infer(image, conf, iou, classes=body.classes)
-    inference_ms = (time.perf_counter() - t1) * 1000.0
 
     detections = [
         Detection(
