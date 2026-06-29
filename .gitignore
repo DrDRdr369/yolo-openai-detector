@@ -19,6 +19,9 @@ htmlcov/
 models/*
 !models/.gitkeep
 
+# Archives / scaffolds
+*.zip
+
 # OS / editor
 .DS_Store
 .idea/
