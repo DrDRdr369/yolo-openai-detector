@@ -56,16 +56,10 @@ def decode_base64_image(
             f"Image size {len(raw_bytes)} bytes exceeds the {max_bytes}-byte limit."
         )
 
-    # Belt-and-suspenders: set Pillow's own decompression-bomb guard to our
-    # configured limit so it fires even during format-specific header scanning
-    # (e.g. animated GIF frame tables, TIFF IFD chains) that occurs inside
-    # PILImage.open() before we can read .size. Our explicit check below is the
-    # primary enforcement; this is a second layer for edge-case formats.
-    # Note: Pillow raises DecompressionBombWarning (not an error by default);
-    # the explicit check below always fires regardless.
-    PILImage.MAX_IMAGE_PIXELS = max_pixels
-
     # Open image header only (lazy — no full raster decode yet)
+    # PILImage.MAX_IMAGE_PIXELS is set once at startup (main.py lifespan) as a
+    # belt-and-suspenders guard for format-specific scanning inside PILImage.open().
+    # The explicit pixel check below is the primary enforcement path.
     try:
         pil_img = PILImage.open(io.BytesIO(raw_bytes))
         w, h = pil_img.size
